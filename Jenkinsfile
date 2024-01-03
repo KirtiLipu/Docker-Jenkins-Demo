@@ -1,96 +1,59 @@
 pipeline {
-
-  environment {
-
-    registry = "kirtiranjan83/demoproject"
-
-    registryCredential = 'dockerhub'
-
-    dockerImage = ''
-
-  }
-
-  agent any
-
-  stages {
-
-    stage('Cloning Git') {
-
-      steps {
-
-        git 'https://github.com/KirtiLipu/Docker-Jenkins-Demo'
-
-      }
-
+    agent any
+    environment {
+        registry = "kirtiranjan83/demoproject"
+        registryCredential = 'dockerhub'
+        dockerImage = ''
     }
 
-    stage('Building image') {
-
-      steps{
-
-        script {
-
-          dockerImage = docker.build registry + ":$BUILD_NUMBER"
-
+    stages {
+        stage('Cloning Git') {
+            steps {
+                git 'https://github.com/KirtiLipu/Docker-Jenkins-Demo'
+            }
         }
 
-      }
-
-    }
-
-    stage('Deploy Image') {
-
-      steps{
-
-        script {
-
-          docker.withRegistry( '', registryCredential ) {
-
-            dockerImage.push()
-
-          }
-
+        stage('Building image') {
+            steps {
+                script {
+                    dockerImage = docker.build("${registry}:${BUILD_NUMBER}")
+                }
+            }
         }
 
-      }
-
-    }
-	stage('Remove Existing Container') {
-
-      steps{
-	  script {
-			sh '''
-
-			a="$(docker container ls --format="{{.ID}}\t{{.Ports}}" | grep "8000" | awk '{print $1}')"
-
-			echo $a
-
-			if [ -z "$a" ]
-			then
-			echo "do not delete"
-			else
-			docker rm -f $a
-			fi
-
-			'''
-		}
-      }
-
-    }
-    
-    	stage('Run Docker Image in Lab') {
-
-      steps{
-
-        script {
-
-		        sh "docker run -d -p 8000:8000 ${dockerImage.imageName()}"
+        stage('Deploy Image') {
+            steps {
+                script {
+                    docker.withRegistry('', registryCredential) {
+                        dockerImage.push()
+                    }
+                }
+            }
         }
 
-      }
+        stage('Remove Existing Container') {
+            steps {
+                script {
+                    sh '''
+                    a="$(docker container ls --format="{{.ID}}\t{{.Ports}}" | grep "8000" | awk '{print $1}')"
+                    echo $a
+                    if [ -z "$a" ]
+                    then
+                        echo "do not delete"
+                    else
+                        docker rm -f $a
+                    fi
+                    '''
+                }
+            }
+        }
 
-	}
-
-  }
-
+        stage('Run Docker Image in Lab') {
+            steps {
+                script {
+                    sh "docker run -d -p 8000:8000 ${dockerImage.imageName()}"
+                }
+            }
+        }
+    }
 }
